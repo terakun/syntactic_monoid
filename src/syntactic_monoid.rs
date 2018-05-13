@@ -15,7 +15,7 @@ impl SyntacticMonoid {
     fn construct() -> Self {
         SyntacticMonoid {
             multiplication_table: Vec::new(),
-            dfa: DFA { states: Vec::new() },
+            dfa: DFA::new(),
         }
     }
 }
