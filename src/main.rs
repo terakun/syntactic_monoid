@@ -1,0 +1,36 @@
+mod regex;
+mod dfa;
+mod syntactic_monoid;
+use dfa::DFA;
+use dfa::State;
+
+fn main() {
+    let mut dfa = DFA::new();
+    let mut s_i = State::new(0, false);
+    let mut s_1 = State::new(1, false);
+    let mut s_2 = State::new(2, false);
+    let mut s_3 = State::new(3, false);
+    let mut s_f = State::new(4, true);
+
+    s_i.add_trans(1, 'a');
+
+    s_1.add_trans(2, 'a');
+    s_1.add_trans(3, 'b');
+
+    s_2.add_trans(2, 'a');
+    s_2.add_trans(3, 'b');
+
+    s_3.add_trans(2, 'a');
+    s_3.add_trans(4, 'b');
+
+    s_f.add_trans(2, 'a');
+    s_f.add_trans(4, 'b');
+
+    dfa.add_state(s_i);
+    dfa.add_state(s_1);
+    dfa.add_state(s_2);
+    dfa.add_state(s_3);
+    dfa.add_state(s_f);
+
+    dfa.to_graphviz();
+}

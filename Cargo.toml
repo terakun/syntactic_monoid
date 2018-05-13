@@ -1,0 +1,6 @@
+[package]
+name = "syntactic_monoid"
+version = "0.1.0"
+authors = ["meip-users"]
+
+[dependencies]
