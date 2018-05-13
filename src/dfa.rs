@@ -74,34 +74,29 @@ impl DFA {
                 v.push(s.id);
             }
         }
+
         let mut id_vec: Vec<i32> = vec![-1; 256];
-        let mut min_id = 0;
-        for m in &transition_map {
+        for (min_id, m) in transition_map.iter().enumerate() {
             for id in m.1 {
-                id_vec[*id as usize] = min_id;
+                id_vec[*id as usize] = min_id as i32;
             }
-            min_id = min_id + 1;
         }
         let mut min_dfa = DFA {
             states: Vec::new(),
             start: id_vec[self.start] as usize,
         };
-        let mut min_id = 0;
-        for m in transition_map {
+        for (min_id, m) in transition_map.iter().enumerate() {
             let mut trans = (m.0).0.clone();
             for t in &mut trans {
                 if *t != -1 {
                     *t = id_vec[*t as usize];
                 }
             }
-            let state = State {
+            min_dfa.add_state(State {
                 t: trans,
-                id: min_id,
+                id: min_id as i32,
                 accept: (m.0).1,
-            };
-            state.print_trans();
-            min_dfa.add_state(state);
-            min_id = min_id + 1;
+            });
         }
         min_dfa
     }
@@ -120,11 +115,10 @@ impl DFA {
         println!(" start [ shape=plaintext ];");
         for s in &self.states {
             let mut ch = 0i32;
-            for t in &s.t {
+            for (ch, t) in s.t.iter().enumerate() {
                 if *t != -1 {
                     println!(" {} -> {} [ label = \"{}\"];", s.id, t, ch as u8 as char);
                 }
-                ch = ch + 1;
             }
             if s.id == self.start as i32 {
                 println!(" start -> {}", s.id);
