@@ -44,6 +44,7 @@ impl State {
 pub struct DFA {
     pub states: Vec<State>,
     start: usize,
+    is_minimum: bool,
 }
 
 impl DFA {
@@ -51,6 +52,7 @@ impl DFA {
         DFA {
             states: Vec::new(),
             start: 0,
+            is_minimum: false,
         }
     }
     fn size(&self) -> usize {
@@ -81,17 +83,19 @@ impl DFA {
                 id_vec[*id as usize] = min_id as i32;
             }
         }
+
         let mut min_dfa = DFA {
             states: Vec::new(),
             start: id_vec[self.start] as usize,
+            is_minimum: true,
         };
+
         for (min_id, m) in transition_map.iter().enumerate() {
-            let mut trans = (m.0).0.clone();
-            for t in &mut trans {
-                if *t != -1 {
-                    *t = id_vec[*t as usize];
-                }
-            }
+            let trans = (m.0)
+                .0
+                .iter()
+                .map(|t| if *t != -1 { id_vec[*t as usize] } else { -1 })
+                .collect();
             min_dfa.add_state(State {
                 t: trans,
                 id: min_id as i32,
@@ -114,10 +118,9 @@ impl DFA {
         }
         println!(" start [ shape=plaintext ];");
         for s in &self.states {
-            let mut ch = 0i32;
             for (ch, t) in s.t.iter().enumerate() {
                 if *t != -1 {
-                    println!(" {} -> {} [ label = \"{}\"];", s.id, t, ch as u8 as char);
+                    println!(" {} -> {} [ label = \"{}\" ];", s.id, t, ch as u8 as char);
                 }
             }
             if s.id == self.start as i32 {

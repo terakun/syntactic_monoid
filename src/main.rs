@@ -1,8 +1,26 @@
 mod regex;
 mod dfa;
 mod syntactic_monoid;
+use regex::Parser;
 use dfa::DFA;
 use dfa::State;
+
+#[test]
+fn regex_test() {
+    let mut parser = Parser::new();
+    let re = parser.parse(&"a+a+b".to_string()).unwrap();
+    assert_eq!(re.to_string(), "((a+a)+b)".to_string());
+    let re = parser.parse(&"(ab+aa)".to_string()).unwrap();
+    assert_eq!(re.to_string(), "(ab+aa)".to_string());
+    let re = parser.parse(&"aa+bbb".to_string()).unwrap();
+    assert_eq!(re.to_string(), "(aa+bbb)".to_string());
+    let re = parser.parse(&"(a(a+b)*b)*b+b".to_string()).unwrap();
+    assert_eq!(re.to_string(), "((a(a+b)*b)*b+b)".to_string());
+    let re = parser.parse(&"ab+ba*".to_string()).unwrap();
+    assert_eq!(re.to_string(), "(ab+ba*)".to_string());
+    let re = parser.parse(&"ab+ba".to_string()).unwrap();
+    assert_eq!(re.to_string(), "(ab+ba)".to_string());
+}
 
 fn main() {
     let mut dfa = DFA::new();
