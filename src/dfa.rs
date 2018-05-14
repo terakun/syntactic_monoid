@@ -66,6 +66,18 @@ impl DFA {
         DFA::new()
     }
     pub fn minimize(&self) -> Self {
+        let mut min_dfa = self.reduction();
+        let mut size = self.size();
+        loop {
+            if min_dfa.size() == size {
+                break;
+            }
+            size = min_dfa.size();
+            min_dfa = min_dfa.reduction();
+        }
+        min_dfa
+    }
+    pub fn reduction(&self) -> Self {
         let mut transition_map: HashMap<(Vec<i32>, bool), Vec<i32>> = HashMap::new();
         for s in &self.states {
             transition_map.insert((s.t.clone(), s.accept), Vec::new());

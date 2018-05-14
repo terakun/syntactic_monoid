@@ -18,7 +18,6 @@ pub enum RegularExpression {
  *          |   <factor> "*"
  * <factor> ::= <alphabet> | "(" <expression> ")"
  *
- *
  */
 
 impl RegularExpression {

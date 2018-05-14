@@ -59,7 +59,7 @@ fn main() {
     if dfa.accept(&vecu8) {
         println!("accept");
     } else {
-        println!("not accept");
+        println!("reject");
     }
     let min_dfa = dfa.minimize();
     min_dfa.to_graphviz();
