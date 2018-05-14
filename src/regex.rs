@@ -42,7 +42,6 @@ impl RegularExpression {
 pub struct Parser {
     cur: usize,
     chars: Vec<char>,
-    len: usize,
 }
 
 impl Parser {
@@ -50,12 +49,11 @@ impl Parser {
         Parser {
             cur: 0,
             chars: Vec::new(),
-            len: 0,
         }
     }
     pub fn parse(&mut self, text: &String) -> Option<RegularExpression> {
         self.chars = text.chars().collect();
-        self.len = self.chars.len();
+        self.chars.push('\0');
         self.cur = 0;
         self.read_union()
     }
@@ -63,7 +61,7 @@ impl Parser {
     // ab(ab+ba*)*
     fn read_union(&mut self) -> Option<RegularExpression> {
         let mut expleft: Option<RegularExpression> = self.read_concat();
-        while self.cur < self.len && self.chars[self.cur] == '+' {
+        while self.chars[self.cur] == '+' {
             println!("{}", self.chars[self.cur]);
             self.cur = self.cur + 1;
             let expright = match self.read_concat() {
@@ -80,7 +78,9 @@ impl Parser {
 
     fn read_concat(&mut self) -> Option<RegularExpression> {
         let mut expleft: Option<RegularExpression> = self.read_kleene();
-        while self.cur < self.len && self.chars[self.cur] != ')' && self.chars[self.cur] != '+' {
+        while self.chars[self.cur] != '\0' && self.chars[self.cur] != ')'
+            && self.chars[self.cur] != '+'
+        {
             let expright = match self.read_kleene() {
                 Some(term) => term,
                 None => {
@@ -96,9 +96,6 @@ impl Parser {
     fn read_kleene(&mut self) -> Option<RegularExpression> {
         match self.read_factor() {
             Some(exp) => {
-                if self.cur >= self.len {
-                    return Some(exp);
-                }
                 let ch = self.chars[self.cur];
                 if ch == '*' {
                     self.cur = self.cur + 1;
@@ -111,9 +108,6 @@ impl Parser {
         }
     }
     fn read_factor(&mut self) -> Option<RegularExpression> {
-        if self.cur >= self.len {
-            return None;
-        }
         let ch = self.chars[self.cur];
         match ch {
             '(' => {
@@ -124,8 +118,7 @@ impl Parser {
                         return None;
                     }
                 };
-                println!("factor:{:?}", exp);
-                if self.cur >= self.len || self.chars[self.cur] != ')' {
+                if self.chars[self.cur] != ')' {
                     println!("unterminated (");
                     return None;
                 }
@@ -133,6 +126,7 @@ impl Parser {
                 Some(exp)
             }
             ')' => None,
+            '\0' => None,
             ch => {
                 self.cur = self.cur + 1;
                 Some(RegularExpression::Char(ch as u8))
