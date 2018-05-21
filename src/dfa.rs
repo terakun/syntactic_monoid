@@ -2,10 +2,13 @@ use regex;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
+pub struct NFAState {}
+
+#[derive(Debug, Clone)]
 pub struct State {
     t: Vec<i32>,
     id: i32,
-    accept: bool,
+    pub accept: bool,
 }
 
 impl State {
@@ -55,8 +58,12 @@ impl DFA {
             is_minimum: false,
         }
     }
-    fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.states.len()
+    }
+
+    pub fn get_trans(&self, i: usize, c: u8) -> i32 {
+        self.states[i].transition(c)
     }
 
     pub fn add_state(&mut self, s: State) {
@@ -65,6 +72,7 @@ impl DFA {
     fn construct(re: &regex::RegularExpression) -> DFA {
         DFA::new()
     }
+
     pub fn minimize(&self) -> Self {
         let mut min_dfa = self.reduction();
         let mut size = self.size();
@@ -77,6 +85,7 @@ impl DFA {
         }
         min_dfa
     }
+
     pub fn reduction(&self) -> Self {
         let mut transition_map: HashMap<(Vec<i32>, bool), Vec<i32>> = HashMap::new();
         for s in &self.states {
