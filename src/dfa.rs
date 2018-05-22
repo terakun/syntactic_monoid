@@ -128,6 +128,7 @@ impl DFA {
 
     pub fn to_graphviz(&self) {
         println!("digraph DFA {{");
+        println!("  rankdir=\"LR\"");
         for s in &self.states {
             print!(" {} [ shape=", s.id);
             if s.accept {
