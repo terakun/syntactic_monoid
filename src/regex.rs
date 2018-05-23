@@ -28,7 +28,7 @@ impl RegularExpression {
             RegularExpression::Char(a) => (a as char).to_string(),
             RegularExpression::Concat(ref e1, ref e2) => e1.to_string() + &e2.to_string(),
             RegularExpression::Union(ref e1, ref e2) => {
-                "(".to_string() + &e1.to_string() + "+" + &e2.to_string() + ")"
+                "(".to_string() + &e1.to_string() + "|" + &e2.to_string() + ")"
             }
             RegularExpression::Kleene(ref e) => match **e {
                 RegularExpression::Concat(_, _) => "(".to_string() + &e.to_string() + ")*",
@@ -60,8 +60,7 @@ impl Parser {
     // ab(ab+ba*)*
     fn read_union(&mut self) -> Option<RegularExpression> {
         let mut expleft: Option<RegularExpression> = self.read_concat();
-        while self.chars[self.cur] == '+' {
-            println!("{}", self.chars[self.cur]);
+        while self.chars[self.cur] == '|' {
             self.cur = self.cur + 1;
             let expright = match self.read_concat() {
                 Some(term) => term,
@@ -78,7 +77,7 @@ impl Parser {
     fn read_concat(&mut self) -> Option<RegularExpression> {
         let mut expleft: Option<RegularExpression> = self.read_kleene();
         while self.chars[self.cur] != '\0' && self.chars[self.cur] != ')'
-            && self.chars[self.cur] != '+'
+            && self.chars[self.cur] != '|'
         {
             let expright = match self.read_kleene() {
                 Some(term) => term,

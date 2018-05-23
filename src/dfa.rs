@@ -2,9 +2,6 @@ use regex;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct NFAState {}
-
-#[derive(Debug, Clone)]
 pub struct State {
     t: Vec<i32>,
     id: i32,
@@ -18,9 +15,6 @@ impl State {
             id: id,
             accept: accept,
         }
-    }
-    pub fn get(&self, i: usize) -> i32 {
-        self.t[i]
     }
     pub fn set_trans(&mut self, transition: &Vec<i32>) {
         self.t = transition.clone();
