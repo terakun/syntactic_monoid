@@ -10,7 +10,8 @@ use syntactic_monoid::SyntacticMonoid;
 
 fn main() {
     let mut parser = Parser::new();
-    let re = parser.parse(&"(a|ba|ab)*".to_string()).unwrap();
+    let input = "(aa)*".to_string();
+    let re = parser.parse(&input).unwrap();
     let nfa = NFA::construct(&re);
     let dfa = DFA::construct_from_nfa(&nfa);
     nfa.to_graphviz();
@@ -18,6 +19,13 @@ fn main() {
     let min_dfa = dfa.minimize();
     min_dfa.to_graphviz();
     let mut sm = SyntacticMonoid::new();
-    sm.construct(&min_dfa);
-    println!("{}", sm.starfree_expression().unwrap());
+    sm.construct(&min_dfa, &input);
+    match sm.starfree_expression() {
+        Some(exp) => {
+            println!("{}", exp);
+        }
+        None => {
+            println!("the monoid is aperiodic");
+        }
+    }
 }

@@ -75,6 +75,7 @@ pub struct SyntacticMonoid {
     accept: Vec<bool>,
     charmorphism: HashMap<u8, ElemType>,
     deg: usize, // a number of elements
+    input: String,
 }
 
 impl SyntacticMonoid {
@@ -88,6 +89,7 @@ impl SyntacticMonoid {
             accept: Vec::new(),
             charmorphism: HashMap::new(),
             deg: 0,
+            input: String::new(),
         }
     }
     pub fn morphism(&self, text: String) -> ElemType {
@@ -156,8 +158,9 @@ impl SyntacticMonoid {
         self.accept[*e]
     }
 
-    pub fn construct(&mut self, dfa: &DFA) {
+    pub fn construct(&mut self, dfa: &DFA, input: &String) {
         self.dfa = dfa.clone();
+        self.input = input.clone();
         let ident = Matrix::ident(dfa.size());
         self.transitions_map.insert(ident.clone(), 0);
         let mut queue = VecDeque::new();
@@ -216,6 +219,9 @@ impl SyntacticMonoid {
         }
     }
     pub fn starfree_expression(&self) -> Option<String> {
+        if !self.aperiodic() {
+            return None;
+        }
         let mut memo: HashMap<ElemType, String> = HashMap::new();
         let mut regex_vec = vec!["@".to_string()];
         for e in 0..self.deg {
