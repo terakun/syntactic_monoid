@@ -6,6 +6,7 @@ use std::collections::HashSet;
 #[derive(Debug, Clone)]
 pub struct State {
     ts: Vec<HashSet<usize>>,
+    epsilon: HashSet<usize>,
     id: usize,
     pub accept: bool,
 }
@@ -14,12 +15,29 @@ impl State {
     pub fn new(id: usize, accept: bool) -> Self {
         State {
             ts: vec![HashSet::new(); 256],
+            epsilon: HashSet::new(),
             id: id,
             accept: accept,
         }
     }
+
+    pub fn add_epsilon(&mut self, id: usize) {
+        self.epsilon.insert(id);
+    }
     pub fn add_trans(&mut self, id: usize, ch: usize) {
         self.ts[ch].insert(id);
+    }
+    pub fn print_trans(&self) {
+        for (ch, t) in self.ts.iter().enumerate() {
+            if t.is_empty() {
+                continue;
+            }
+            print!("{}:", ch as u8 as char);
+            for q in t.iter() {
+                print!("{} ", *q);
+            }
+            println!("");
+        }
     }
 }
 
@@ -57,13 +75,19 @@ impl NFA {
                 }
                 new_ts.push(new_t);
             }
+            let mut new_epsilon: HashSet<usize> = HashSet::new();
+            for q in s.epsilon.iter() {
+                new_epsilon.insert(*q + shift);
+            }
             let mut new_s = s.clone();
             new_s.id = s.id + shift;
             new_s.ts = new_ts;
+            new_s.epsilon = new_epsilon;
 
             if new_s.id == self.start.id + shift {
                 nfa.start = new_s.clone();
-            } else if new_s.id == self.end.id + shift {
+            }
+            if new_s.id == self.end.id + shift {
                 nfa.end = new_s.clone();
             }
 
@@ -72,15 +96,46 @@ impl NFA {
         nfa
     }
 
+    pub fn fix_id(&self) -> Self {
+        let mut ids: HashMap<usize, usize> = HashMap::new();
+        let mut fixed_nfa = NFA::new();
+        for (id, s) in self.states.iter().enumerate() {
+            ids.insert(s.id, id);
+        }
+        for s in &self.states {
+            let mut new_ts: Vec<HashSet<usize>> = Vec::new();
+            for t in &s.ts {
+                let mut new_t: HashSet<usize> = HashSet::new();
+                for q in t.iter() {
+                    new_t.insert(*ids.get(q).unwrap());
+                }
+                new_ts.push(new_t);
+            }
+            let mut new_s = s.clone();
+            new_s.ts = new_ts;
+            new_s.id = *ids.get(&s.id).unwrap();
+            if s.id == self.start.id {
+                fixed_nfa.start = new_s.clone();
+            }
+            if s.id == self.end.id {
+                fixed_nfa.end = new_s.clone();
+            }
+            fixed_nfa.add_state(new_s);
+        }
+        fixed_nfa
+    }
     pub fn construct(re: &regex::RegularExpression) -> Self {
         match *re {
             RegularExpression::Empty => NFA::new(),
             RegularExpression::Epsilon => {
-                let s = State::new(1, true);
+                let mut s_i = State::new(0, false);
+                let mut s_f = State::new(1, true);
+                s_i.add_epsilon(1);
                 let mut nfa = NFA::new();
-                nfa.add_state(s.clone());
-                nfa.start = s.clone();
-                nfa.end = s.clone();
+                nfa.add_state(s_i.clone());
+                nfa.add_state(s_f.clone());
+                nfa.start = s_i;
+                nfa.end = s_f;
                 nfa
             }
             RegularExpression::Char(a) => {
@@ -90,8 +145,8 @@ impl NFA {
                 let mut nfa = NFA::new();
                 nfa.add_state(s_i.clone());
                 nfa.add_state(s_f.clone());
-                nfa.start = s_i.clone();
-                nfa.end = s_f.clone();
+                nfa.start = s_i;
+                nfa.end = s_f;
                 nfa
             }
             RegularExpression::Concat(ref e1, ref e2) => {
@@ -107,16 +162,18 @@ impl NFA {
                     }
                 }
                 s_merged.accept = false;
+                for q in s_i2.epsilon.iter() {
+                    s_merged.add_epsilon(*q + snum1 - 1);
+                }
 
                 let nfa2 = nfa2.shift_idx(snum1 - 1);
                 let mut nfa = NFA::new();
-
                 for s in &nfa1.states {
                     if s.id != nfa1.end.id {
                         nfa.add_state(s.clone());
                     }
                 }
-                nfa.add_state(s_merged);
+                nfa.add_state(s_merged.clone());
                 for s in &nfa2.states {
                     if s.id != nfa2.start.id {
                         nfa.add_state(s.clone());
@@ -127,129 +184,76 @@ impl NFA {
                 nfa
             }
             RegularExpression::Union(ref e1, ref e2) => {
-                let mut nfa1 = NFA::construct(e1);
+                let nfa1 = NFA::construct(e1);
                 let snum1 = nfa1.size();
-                let mut nfa2 = NFA::construct(e2);
+                let nfa2 = NFA::construct(e2);
+                let snum2 = nfa2.size();
 
-                let mut s_merged_i = nfa1.start.clone();
+                let mut s_i = State::new(0, false);
+                let s_i1 = nfa1.start.clone();
+                s_i.add_epsilon(nfa1.start.id + 1);
                 let s_i2 = nfa2.start.clone();
-                for (ch, t) in s_i2.ts.iter().enumerate() {
-                    for q in t.iter() {
-                        if *q == nfa2.start.id {
-                            s_merged_i.add_trans(nfa1.start.id, ch);
-                        } else if *q == nfa2.end.id {
-                            s_merged_i.add_trans(nfa1.end.id, ch);
-                        } else {
-                            s_merged_i.add_trans(*q + snum1 - 1, ch);
-                        }
-                    }
-                }
+                s_i.add_epsilon(nfa1.start.id + snum1 + 1);
 
-                let mut s_merged_f = nfa1.end.clone();
-                let mut s_f2 = nfa2.end.clone();
-                for (ch, t) in s_f2.ts.iter().enumerate() {
-                    for q in t.iter() {
-                        if *q == nfa2.start.id {
-                            s_merged_i.add_trans(nfa1.start.id, ch);
-                        } else if *q == nfa2.end.id {
-                            s_merged_i.add_trans(nfa1.end.id, ch);
-                        } else {
-                            s_merged_i.add_trans(*q + snum1 - 1, ch);
-                        }
-                    }
-                }
-
+                let s_f = State::new(snum1 + snum2 + 1, true);
                 let mut nfa = NFA::new();
+                nfa.add_state(s_i.clone());
+                let nfa1 = nfa1.shift_idx(1);
+                let mut s_f1 = nfa1.end.clone();
+                s_f1.add_epsilon(s_f.id);
+                s_f1.accept = false;
                 for s in nfa1.states {
-                    if s.id == nfa1.start.id {
-                        nfa.add_state(s_merged_i.clone());
-                    } else if s.id == nfa1.end.id {
-                        nfa.add_state(s_merged_f.clone());
+                    if s.id == nfa1.end.id {
+                        nfa.add_state(s_f1.clone());
                     } else {
                         nfa.add_state(s);
                     }
                 }
 
-                let nfa2 = nfa2.shift_idx(snum1 - 1);
+                let nfa2 = nfa2.shift_idx(snum1 + 1);
+                let mut s_f2 = nfa2.end.clone();
+                s_f2.add_epsilon(s_f.id);
+                s_f2.accept = false;
                 for s in nfa2.states {
-                    if s.id == nfa2.start.id || s.id == nfa2.end.id {
-                        continue;
+                    if s.id == nfa2.end.id {
+                        nfa.add_state(s_f2.clone());
+                    } else {
+                        nfa.add_state(s);
                     }
-                    let mut new_ts: Vec<HashSet<usize>> = Vec::new();
-                    for t in &s.ts {
-                        let mut new_t: HashSet<usize> = HashSet::new();
-                        for q in t.iter() {
-                            if *q == nfa2.start.id {
-                                new_t.insert(nfa1.start.id);
-                            } else if *q == nfa2.end.id {
-                                new_t.insert(nfa1.end.id);
-                            } else {
-                                new_t.insert(*q);
-                            }
-                        }
-                        new_ts.push(new_t);
-                    }
-                    let mut new_s = State::new(s.id, false);
-                    new_s.ts = new_ts;
-                    nfa.add_state(new_s);
                 }
-                nfa.start = s_merged_i;
-                nfa.end = s_merged_f;
+                nfa.add_state(s_f.clone());
+                nfa.start = s_i;
+                nfa.end = s_f;
                 nfa
             }
             RegularExpression::Kleene(ref e) => {
                 let mut nfa = NFA::construct(e);
-                let s_f = nfa.end.clone();
-                let mut s_merged = State::new(nfa.start.id, true);
-                for (ch, t) in nfa.start.ts.iter().enumerate() {
-                    if t.is_empty() {
-                        continue;
-                    }
-                    print!("{}:", ch as u8 as char);
-                    for q in t.iter() {
-                        print!("{} ", *q);
-                        if *q == nfa.end.id {
-                            s_merged.add_trans(nfa.start.id, ch);
-                        } else {
-                            s_merged.add_trans(*q, ch);
-                        }
-                    }
-                    println!("");
-                }
-                for (ch, t) in s_f.ts.iter().enumerate() {
-                    for q in t.iter() {
-                        if *q == nfa.end.id {
-                            s_merged.add_trans(nfa.start.id, ch);
-                        } else {
-                            s_merged.add_trans(*q, ch);
-                        }
-                    }
-                }
-                let mut new_nfa = NFA::new();
-                new_nfa.add_state(s_merged.clone());
+                let nfa = nfa.shift_idx(1);
+                let snum = nfa.size();
+                let mut s_i = State::new(0, false);
+                s_i.add_epsilon(nfa.start.id);
+                let mut s_f = State::new(snum + 1, true);
+                let mut s_e_i = nfa.start.clone();
+                s_e_i.add_epsilon(s_f.id);
+                let mut s_e_f = nfa.end.clone();
+                s_e_f.accept = false;
+                s_e_f.add_epsilon(s_e_i.id);
 
-                for s in &nfa.states {
-                    if s.id == nfa.start.id || s.id == nfa.end.id {
-                        continue;
+                let mut new_nfa = NFA::new();
+                new_nfa.add_state(s_i.clone());
+                for s in nfa.states {
+                    if s.id == nfa.start.id {
+                        new_nfa.add_state(s_e_i.clone());
+                    } else if s.id == nfa.end.id {
+                        new_nfa.add_state(s_e_f.clone());
+                    } else {
+                        new_nfa.add_state(s);
                     }
-                    let mut new_ts: Vec<HashSet<usize>> = Vec::new();
-                    for t in &s.ts {
-                        let mut new_t: HashSet<usize> = HashSet::new();
-                        for q in t.iter() {
-                            if *q == nfa.end.id {
-                                new_t.insert(nfa.start.id);
-                            } else {
-                                new_t.insert(*q);
-                            }
-                        }
-                        new_ts.push(new_t);
-                    }
-                    let mut new_s = State::new(s.id, false);
-                    new_s.ts = new_ts;
-                    new_nfa.add_state(new_s);
                 }
-                new_nfa.start = s_merged.clone();
-                new_nfa.end = s_merged;
+                new_nfa.add_state(s_f.clone());
+
+                new_nfa.start = s_i;
+                new_nfa.end = s_f;
                 new_nfa
             }
             _ => {
@@ -262,7 +266,7 @@ impl NFA {
         println!("digraph NFA {{");
         println!("  rankdir=\"LR\"");
         for s in &self.states {
-            print!(" {} [ shape=", s.id);
+            print!("  {} [ shape=", s.id);
             if s.accept {
                 print!("doublecircle");
             } else {
@@ -277,6 +281,10 @@ impl NFA {
                     println!(" {} -> {} [ label = \"{}\" ];", s.id, q, ch as u8 as char);
                 }
             }
+            for q in s.epsilon.iter() {
+                println!(" {} -> {} [ label = ε ];", s.id, q);
+            }
+
             if s.id == self.start.id {
                 println!(" start -> {}", s.id);
             }

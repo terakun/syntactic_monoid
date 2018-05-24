@@ -27,7 +27,9 @@ fn regex_test() {
 
 fn main() {
     let mut parser = Parser::new();
-    let re = parser.parse(&"(a|ab|ba)*".to_string()).unwrap();
+    // let re = parser.parse(&"a(a|ab|ba)*c(b|a)*".to_string()).unwrap();
+    let re = parser.parse(&"a(a|ab|ba)*c".to_string()).unwrap();
+    // let re = parser.parse(&"a*c".to_string()).unwrap();
     // let re = parser.parse(&"a+c+b+a".to_string()).unwrap();
     // println!("{:?}", re);
     let nfa = NFA::construct(&re);

@@ -1,4 +1,6 @@
 use regex;
+use nfa;
+use nfa::NFA;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -64,6 +66,10 @@ impl DFA {
         self.states.push(s);
     }
     fn construct(re: &regex::RegularExpression) -> DFA {
+        DFA::new()
+    }
+
+    fn construct_from_nfa(nfa: &NFA) -> Self {
         DFA::new()
     }
 
