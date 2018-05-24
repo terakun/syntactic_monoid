@@ -1,7 +1,8 @@
-use regex;
-use nfa;
 use nfa::NFA;
+use nfa::SubSet;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub struct State {
@@ -65,12 +66,75 @@ impl DFA {
     pub fn add_state(&mut self, s: State) {
         self.states.push(s);
     }
-    fn construct(re: &regex::RegularExpression) -> DFA {
-        DFA::new()
-    }
 
-    fn construct_from_nfa(nfa: &NFA) -> Self {
-        DFA::new()
+    pub fn print_subset(subset: &SubSet) {
+        for s in subset {
+            print!("{} ", s);
+        }
+        println!("");
+    }
+    pub fn construct_from_nfa(nfa: &NFA) -> Self {
+        let mut family: HashSet<SubSet> = HashSet::new();
+
+        let s_i = nfa.start.clone();
+        let mut subset_i = SubSet::new();
+        subset_i.insert(s_i.id);
+        let expand_subset_i = nfa.epsilon_expand(&subset_i);
+
+        let mut queue: VecDeque<SubSet> = VecDeque::new();
+        queue.push_back(expand_subset_i);
+        while !queue.is_empty() {
+            let subset = queue.pop_front().unwrap();
+            let subset = nfa.epsilon_expand(&subset);
+            if family.contains(&subset) {
+                continue;
+            }
+            family.insert(subset.clone());
+            for ch in 0..256 {
+                let mut next = SubSet::new();
+                for s in &subset {
+                    for q in nfa.states[*s].ts[ch].iter() {
+                        next.insert(*q);
+                    }
+                }
+                if !next.is_empty() {
+                    queue.push_back(next);
+                }
+            }
+        }
+        let mut nfa2dfa_id: HashMap<SubSet, usize> = HashMap::new();
+        for (dfa_id, subset) in family.iter().enumerate() {
+            nfa2dfa_id.insert(subset.clone(), dfa_id);
+        }
+
+        let mut dfa = DFA::new();
+
+        for (dfa_id, subset) in family.iter().enumerate() {
+            let mut dfa_state = State::new(dfa_id as i32, false);
+            for ch in 0..256 {
+                let mut trans_subset = SubSet::new();
+                for s in subset {
+                    for q in nfa.states[*s].ts[ch].iter() {
+                        trans_subset.insert(*q);
+                    }
+                }
+                if trans_subset.is_empty() {
+                    continue;
+                }
+                let trans_subset = nfa.epsilon_expand(&trans_subset);
+                dfa_state.t[ch as usize] = *nfa2dfa_id.get(&trans_subset).unwrap() as i32;
+            }
+            for s in subset {
+                if nfa.states[*s].id == nfa.start.id {
+                    dfa.start = nfa.start.id;
+                }
+                if nfa.states[*s].accept {
+                    dfa_state.accept = true;
+                }
+            }
+            dfa.add_state(dfa_state);
+        }
+        dfa
     }
 
     pub fn minimize(&self) -> Self {
@@ -130,7 +194,7 @@ impl DFA {
         println!("digraph DFA {{");
         println!("  rankdir=\"LR\"");
         for s in &self.states {
-            print!(" {} [ shape=", s.id);
+            print!("  {} [ shape=", s.id);
             if s.accept {
                 print!("doublecircle");
             } else {
@@ -138,7 +202,7 @@ impl DFA {
             }
             println!(" ];");
         }
-        println!(" start [ shape=plaintext ];");
+        println!("  start [ shape=plaintext ];");
         for s in &self.states {
             for (ch, t) in s.t.iter().enumerate() {
                 if *t != -1 {

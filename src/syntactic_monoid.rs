@@ -1,4 +1,3 @@
-use super::regex;
 use super::dfa::DFA;
 use regex::RegularExpression;
 use std::collections::HashMap;
@@ -143,7 +142,7 @@ impl SyntacticMonoid {
     pub fn aperiodic(&self) -> bool {
         for i in 0..self.deg {
             let mut e = i;
-            for j in 0..self.deg {
+            for _ in 0..self.deg {
                 e = self.multiplication_table[e][i];
             }
             if e != self.multiplication_table[e][i] {
@@ -224,10 +223,10 @@ impl SyntacticMonoid {
                 regex_vec.push(self.starfree_recursion(e, &mut memo));
             }
         }
-        println!("{:?}", regex_vec);
         let regex = regex_vec.join("|");
         Some(regex)
     }
+    #[allow(non_snake_case)]
     fn starfree_recursion(&self, m: ElemType, memo: &mut HashMap<ElemType, String>) -> String {
         if let Some(ref s) = memo.get(&m) {
             return s.to_string();
@@ -260,10 +259,6 @@ impl SyntacticMonoid {
                 format!("[{}]*", s)
             }
         } else {
-            let mut AWA = String::new();
-            let mut UA = String::new();
-            let mut AV = String::new();
-
             let M = self.make_elemset();
             let Mm = self.right_multiply(&M, m);
             let mM = self.left_multiply(m, &M);
@@ -284,7 +279,7 @@ impl SyntacticMonoid {
                     tmp.push(self.starfree_recursion(n, memo) + &(a as u8 as char).to_string());
                 }
             }
-            UA = if tmp.is_empty() {
+            let UA = if tmp.is_empty() {
                 "@".to_string()
             } else if tmp.len() == 1 {
                 format!("{}!@", tmp[0])
@@ -309,7 +304,7 @@ impl SyntacticMonoid {
                     tmp.push((a as u8 as char).to_string() + &self.starfree_recursion(n, memo));
                 }
             }
-            AV = if tmp.is_empty() {
+            let AV = if tmp.is_empty() {
                 "@".to_string()
             } else if tmp.len() == 1 {
                 format!("!@{}", tmp[0])
@@ -354,7 +349,7 @@ impl SyntacticMonoid {
                 }
             }
 
-            AWA = if W_.is_empty() && tmp.is_empty() {
+            let AWA = if W_.is_empty() && tmp.is_empty() {
                 "@".to_string()
             } else {
                 let mut s = String::new();

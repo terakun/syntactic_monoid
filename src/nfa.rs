@@ -1,15 +1,18 @@
 use regex;
 use regex::RegularExpression;
-use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::BTreeSet;
+use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub struct State {
-    ts: Vec<HashSet<usize>>,
-    epsilon: HashSet<usize>,
-    id: usize,
+    pub ts: Vec<HashSet<usize>>,
+    pub epsilon: HashSet<usize>,
+    pub id: usize,
     pub accept: bool,
 }
+
+pub type SubSet = BTreeSet<usize>;
 
 impl State {
     pub fn new(id: usize, accept: bool) -> Self {
@@ -44,8 +47,8 @@ impl State {
 #[derive(Debug, Clone)]
 pub struct NFA {
     pub states: Vec<State>,
-    start: State,
-    end: State,
+    pub start: State,
+    pub end: State,
 }
 
 impl NFA {
@@ -62,6 +65,25 @@ impl NFA {
 
     pub fn add_state(&mut self, s: State) {
         self.states.push(s);
+    }
+
+    pub fn epsilon_expand(&self, subset: &SubSet) -> SubSet {
+        let mut expand_subset = SubSet::new();
+        let mut queue: VecDeque<usize> = VecDeque::new();
+        for q in subset.iter() {
+            queue.push_back(*q);
+            expand_subset.insert(*q);
+        }
+        while !queue.is_empty() {
+            let state = queue.pop_front().unwrap();
+            for q in self.states[state].epsilon.iter() {
+                if !expand_subset.contains(q) {
+                    queue.push_back(*q);
+                    expand_subset.insert(*q);
+                }
+            }
+        }
+        expand_subset
     }
 
     pub fn shift_idx(&self, shift: usize) -> Self {
@@ -96,34 +118,34 @@ impl NFA {
         nfa
     }
 
-    pub fn fix_id(&self) -> Self {
-        let mut ids: HashMap<usize, usize> = HashMap::new();
-        let mut fixed_nfa = NFA::new();
-        for (id, s) in self.states.iter().enumerate() {
-            ids.insert(s.id, id);
-        }
-        for s in &self.states {
-            let mut new_ts: Vec<HashSet<usize>> = Vec::new();
-            for t in &s.ts {
-                let mut new_t: HashSet<usize> = HashSet::new();
-                for q in t.iter() {
-                    new_t.insert(*ids.get(q).unwrap());
-                }
-                new_ts.push(new_t);
-            }
-            let mut new_s = s.clone();
-            new_s.ts = new_ts;
-            new_s.id = *ids.get(&s.id).unwrap();
-            if s.id == self.start.id {
-                fixed_nfa.start = new_s.clone();
-            }
-            if s.id == self.end.id {
-                fixed_nfa.end = new_s.clone();
-            }
-            fixed_nfa.add_state(new_s);
-        }
-        fixed_nfa
-    }
+    // pub fn fix_id(&self) -> Self {
+    //     let mut ids: HashMap<usize, usize> = HashMap::new();
+    //     let mut fixed_nfa = NFA::new();
+    //     for (id, s) in self.states.iter().enumerate() {
+    //         ids.insert(s.id, id);
+    //     }
+    //     for s in &self.states {
+    //         let mut new_ts: Vec<HashSet<usize>> = Vec::new();
+    //         for t in &s.ts {
+    //             let mut new_t: HashSet<usize> = HashSet::new();
+    //             for q in t.iter() {
+    //                 new_t.insert(*ids.get(q).unwrap());
+    //             }
+    //             new_ts.push(new_t);
+    //         }
+    //         let mut new_s = s.clone();
+    //         new_s.ts = new_ts;
+    //         new_s.id = *ids.get(&s.id).unwrap();
+    //         if s.id == self.start.id {
+    //             fixed_nfa.start = new_s.clone();
+    //         }
+    //         if s.id == self.end.id {
+    //             fixed_nfa.end = new_s.clone();
+    //         }
+    //         fixed_nfa.add_state(new_s);
+    //     }
+    //     fixed_nfa
+    // }
     pub fn construct(re: &regex::RegularExpression) -> Self {
         match *re {
             RegularExpression::Empty => NFA::new(),
@@ -190,9 +212,7 @@ impl NFA {
                 let snum2 = nfa2.size();
 
                 let mut s_i = State::new(0, false);
-                let s_i1 = nfa1.start.clone();
                 s_i.add_epsilon(nfa1.start.id + 1);
-                let s_i2 = nfa2.start.clone();
                 s_i.add_epsilon(nfa1.start.id + snum1 + 1);
 
                 let s_f = State::new(snum1 + snum2 + 1, true);
@@ -255,9 +275,6 @@ impl NFA {
                 new_nfa.start = s_i;
                 new_nfa.end = s_f;
                 new_nfa
-            }
-            _ => {
-                panic!("not implemented");
             }
         }
     }

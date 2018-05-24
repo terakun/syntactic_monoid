@@ -8,30 +8,16 @@ use dfa::DFA;
 use dfa::State;
 use syntactic_monoid::SyntacticMonoid;
 
-#[test]
-fn regex_test() {
-    let mut parser = Parser::new();
-    let re = parser.parse(&"a+a+b".to_string()).unwrap();
-    assert_eq!(re.to_string(), "((a+a)+b)".to_string());
-    let re = parser.parse(&"(ab+aa)".to_string()).unwrap();
-    assert_eq!(re.to_string(), "(ab+aa)".to_string());
-    let re = parser.parse(&"aa+bbb".to_string()).unwrap();
-    assert_eq!(re.to_string(), "(aa+bbb)".to_string());
-    let re = parser.parse(&"(a(a+b)*b)*b+b".to_string()).unwrap();
-    assert_eq!(re.to_string(), "((a(a+b)*b)*b+b)".to_string());
-    let re = parser.parse(&"ab+ba*".to_string()).unwrap();
-    assert_eq!(re.to_string(), "(ab+ba*)".to_string());
-    let re = parser.parse(&"ab+ba".to_string()).unwrap();
-    assert_eq!(re.to_string(), "(ab+ba)".to_string());
-}
-
 fn main() {
     let mut parser = Parser::new();
-    // let re = parser.parse(&"a(a|ab|ba)*c(b|a)*".to_string()).unwrap();
-    let re = parser.parse(&"a(a|ab|ba)*c".to_string()).unwrap();
-    // let re = parser.parse(&"a*c".to_string()).unwrap();
-    // let re = parser.parse(&"a+c+b+a".to_string()).unwrap();
-    // println!("{:?}", re);
+    let re = parser.parse(&"(a|ba|ab)*".to_string()).unwrap();
     let nfa = NFA::construct(&re);
+    let dfa = DFA::construct_from_nfa(&nfa);
     nfa.to_graphviz();
+    dfa.to_graphviz();
+    let min_dfa = dfa.minimize();
+    min_dfa.to_graphviz();
+    let mut sm = SyntacticMonoid::new();
+    sm.construct(&min_dfa);
+    println!("{}", sm.starfree_expression().unwrap());
 }
