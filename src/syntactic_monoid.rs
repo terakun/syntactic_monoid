@@ -230,7 +230,6 @@ impl SyntacticMonoid {
                 regex_vec.push(self.starfree_recursion(e, &mut memo));
             }
         }
-        println!("{:?}", regex_vec);
         let regex = regex_vec.join("|");
         Some(regex)
     }
@@ -296,7 +295,6 @@ impl SyntacticMonoid {
             };
 
             // build A* V
-
             let mut tmp: Vec<String> = Vec::new();
             for n in 0..(self.deg) {
                 for a in 0..256u32 {

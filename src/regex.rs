@@ -17,7 +17,7 @@ pub enum RegularExpression {
  * <kleene> ::= <factor>
  *          |   <factor> "*"
  * <factor> ::= <alphabet> | "(" <expression> ")"
- *
+ * <alphabet> ::= 0 | .. | 255 ( ASCII code )
  */
 
 impl RegularExpression {
@@ -57,7 +57,6 @@ impl Parser {
         self.read_union()
     }
 
-    // ab(ab+ba*)*
     fn read_union(&mut self) -> Option<RegularExpression> {
         let mut expleft: Option<RegularExpression> = self.read_concat();
         while self.chars[self.cur] == '|' {
