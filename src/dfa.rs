@@ -1,7 +1,8 @@
 use nfa::NFA;
 use nfa::SubSet;
 use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
@@ -43,7 +44,7 @@ impl State {
 #[derive(Debug, Clone)]
 pub struct DFA {
     pub states: Vec<State>,
-    start: usize,
+    pub start: usize,
     is_minimum: bool,
 }
 
@@ -74,7 +75,7 @@ impl DFA {
         println!("");
     }
     pub fn construct_from_nfa(nfa: &NFA) -> Self {
-        let mut family: HashSet<SubSet> = HashSet::new();
+        let mut family: BTreeSet<SubSet> = BTreeSet::new();
 
         let s_i = nfa.start.clone();
         let mut subset_i = SubSet::new();
@@ -139,19 +140,19 @@ impl DFA {
 
     pub fn minimize(&self) -> Self {
         let mut min_dfa = self.reduction();
-        let mut size = self.size();
         loop {
-            if min_dfa.size() == size {
+            let next_dfa = min_dfa.reduction();
+            if min_dfa.size() == next_dfa.size() {
                 break;
             }
-            size = min_dfa.size();
-            min_dfa = min_dfa.reduction();
+            min_dfa = next_dfa;
         }
         min_dfa
     }
 
     pub fn reduction(&self) -> Self {
-        let mut transition_map: HashMap<(Vec<i32>, bool), Vec<i32>> = HashMap::new();
+        // 遷移関数が同じ && 受理状態が同じ 状態を同一視する
+        let mut transition_map: BTreeMap<(Vec<i32>, bool), Vec<i32>> = BTreeMap::new();
         for s in &self.states {
             transition_map.insert((s.t.clone(), s.accept), Vec::new());
         }
@@ -162,16 +163,16 @@ impl DFA {
             }
         }
 
-        let mut id_vec: Vec<i32> = vec![-1; 256];
+        let mut min_dfa_ids: Vec<i32> = vec![-1; self.size()];
         for (min_id, m) in transition_map.iter().enumerate() {
             for id in m.1 {
-                id_vec[*id as usize] = min_id as i32;
+                min_dfa_ids[*id as usize] = min_id as i32;
             }
         }
 
         let mut min_dfa = DFA {
             states: Vec::new(),
-            start: id_vec[self.start] as usize,
+            start: min_dfa_ids[self.start] as usize,
             is_minimum: true,
         };
 
@@ -179,8 +180,15 @@ impl DFA {
             let trans = (m.0)
                 .0
                 .iter()
-                .map(|t| if *t != -1 { id_vec[*t as usize] } else { -1 })
+                .map(|t| {
+                    if *t != -1 {
+                        min_dfa_ids[*t as usize]
+                    } else {
+                        -1
+                    }
+                })
                 .collect();
+
             min_dfa.add_state(State {
                 t: trans,
                 id: min_id as i32,

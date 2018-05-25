@@ -3,6 +3,7 @@ use regex::RegularExpression;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
+use std::collections::BTreeSet;
 
 extern crate bit_set;
 use self::bit_set::BitSet;
@@ -60,7 +61,7 @@ impl Matrix {
 }
 
 type ElemType = usize;
-type ElemSet = HashSet<ElemType>;
+type ElemSet = BTreeSet<ElemType>;
 
 pub fn identity(e: &ElemType) -> bool {
     *e == 0
@@ -204,7 +205,7 @@ impl SyntacticMonoid {
             self.accept[*mat_i.1] = false;
 
             for i in 0..dfa.size() {
-                if mat_i.0.get(0, i) != 0 && dfa.states[i].accept {
+                if mat_i.0.get(dfa.start, i) != 0 && dfa.states[i].accept {
                     self.accept[*mat_i.1] = true;
                 }
             }
@@ -229,6 +230,7 @@ impl SyntacticMonoid {
                 regex_vec.push(self.starfree_recursion(e, &mut memo));
             }
         }
+        println!("{:?}", regex_vec);
         let regex = regex_vec.join("|");
         Some(regex)
     }

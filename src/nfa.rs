@@ -1,13 +1,12 @@
 use regex;
 use regex::RegularExpression;
-use std::collections::HashSet;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub struct State {
-    pub ts: Vec<HashSet<usize>>,
-    pub epsilon: HashSet<usize>,
+    pub ts: Vec<BTreeSet<usize>>,
+    pub epsilon: BTreeSet<usize>,
     pub id: usize,
     pub accept: bool,
 }
@@ -17,8 +16,8 @@ pub type SubSet = BTreeSet<usize>;
 impl State {
     pub fn new(id: usize, accept: bool) -> Self {
         State {
-            ts: vec![HashSet::new(); 256],
-            epsilon: HashSet::new(),
+            ts: vec![BTreeSet::new(); 256],
+            epsilon: BTreeSet::new(),
             id: id,
             accept: accept,
         }
@@ -89,15 +88,15 @@ impl NFA {
     pub fn shift_idx(&self, shift: usize) -> Self {
         let mut nfa = NFA::new();
         for s in &self.states {
-            let mut new_ts: Vec<HashSet<usize>> = Vec::new();
+            let mut new_ts: Vec<BTreeSet<usize>> = Vec::new();
             for t in &s.ts {
-                let mut new_t: HashSet<usize> = HashSet::new();
+                let mut new_t: BTreeSet<usize> = BTreeSet::new();
                 for q in t.iter() {
                     new_t.insert(q + shift);
                 }
                 new_ts.push(new_t);
             }
-            let mut new_epsilon: HashSet<usize> = HashSet::new();
+            let mut new_epsilon: BTreeSet<usize> = BTreeSet::new();
             for q in s.epsilon.iter() {
                 new_epsilon.insert(*q + shift);
             }
@@ -118,34 +117,6 @@ impl NFA {
         nfa
     }
 
-    // pub fn fix_id(&self) -> Self {
-    //     let mut ids: HashMap<usize, usize> = HashMap::new();
-    //     let mut fixed_nfa = NFA::new();
-    //     for (id, s) in self.states.iter().enumerate() {
-    //         ids.insert(s.id, id);
-    //     }
-    //     for s in &self.states {
-    //         let mut new_ts: Vec<HashSet<usize>> = Vec::new();
-    //         for t in &s.ts {
-    //             let mut new_t: HashSet<usize> = HashSet::new();
-    //             for q in t.iter() {
-    //                 new_t.insert(*ids.get(q).unwrap());
-    //             }
-    //             new_ts.push(new_t);
-    //         }
-    //         let mut new_s = s.clone();
-    //         new_s.ts = new_ts;
-    //         new_s.id = *ids.get(&s.id).unwrap();
-    //         if s.id == self.start.id {
-    //             fixed_nfa.start = new_s.clone();
-    //         }
-    //         if s.id == self.end.id {
-    //             fixed_nfa.end = new_s.clone();
-    //         }
-    //         fixed_nfa.add_state(new_s);
-    //     }
-    //     fixed_nfa
-    // }
     pub fn construct(re: &regex::RegularExpression) -> Self {
         match *re {
             RegularExpression::Empty => NFA::new(),
